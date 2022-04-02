@@ -64,6 +64,42 @@ def time_target(csv_content)
   puts max_keys(registration_hours)
 end
 
+def extract_week_day(date)
+  Time.strptime(date, '%m/%d/%y %H:%M').wday
+end
+
+def number_to_week(number)
+  case number
+  when 0
+    'Sunday'
+  when 1
+    'Monday'
+  when 2
+    'Tuesday'
+  when 3
+    'Wednesday'
+  when 4
+    'Thursday'
+  when 5
+    'Friday'
+  when 6
+    'Saturday'
+  end
+end
+
+def week_day_target(csv_content)
+  registration_days = {}
+
+  csv_content.each do |row|
+    day = extract_week_day(row[:regdate])
+    registration_days[day].nil? ? registration_days[day] = 1 : registration_days[day] += 1
+  end
+
+  puts "The peak registration days are:"
+  puts max_keys(registration_days).map { |key| number_to_week(key) }
+end
+
+
 puts 'EventManager initialized.'
 
 contents = CSV.open(
@@ -72,7 +108,7 @@ contents = CSV.open(
   header_converters: :symbol
 )
 
-time_target(contents)
+week_day_target(contents)
 
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
@@ -81,9 +117,9 @@ contents.each do |row|
   id = row[0]
   name = row[:first_name]
   zipcode = clean_zipcode(row[:zipcode])
-  #legislators = legislators_by_zipcode(zipcode)
+  legislators = legislators_by_zipcode(zipcode)
 
-  #form_letter = erb_template.result(binding)
+  form_letter = erb_template.result(binding)
 
-  #save_thank_you_letter(id, form_letter)
+  save_thank_you_letter(id, form_letter)
 end
