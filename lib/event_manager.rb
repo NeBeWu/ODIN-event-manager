@@ -1,12 +1,13 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
 end
 
-def clean_phone_numbers(phone_number)
+def clean_phone_number(phone_number)
   phone_number.gsub!(/[^\d]/, '')
 
   return phone_number[-10, 10] if phone_number.length == 10 ||
@@ -41,6 +42,28 @@ def save_thank_you_letter(id, form_letter)
   end
 end
 
+def extract_hour(date)
+  Time.strptime(date, '%m/%d/%y %H:%M').hour
+end
+
+def max_keys(hash)
+  max = hash.max { |pair1, pair2| pair1[1] <=> pair2[1] }[1]
+  hash.select! { |key, value| value == max }
+  hash.keys
+end
+
+def time_target(csv_content)
+  registration_hours = {}
+
+  csv_content.each do |row|
+    hour = extract_hour(row[:regdate])
+    registration_hours[hour].nil? ? registration_hours[hour] = 1 : registration_hours[hour] += 1
+  end
+
+  puts "The peak registration hours are:"
+  puts max_keys(registration_hours)
+end
+
 puts 'EventManager initialized.'
 
 contents = CSV.open(
@@ -49,6 +72,8 @@ contents = CSV.open(
   header_converters: :symbol
 )
 
+time_target(contents)
+
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
@@ -56,9 +81,8 @@ contents.each do |row|
   id = row[0]
   name = row[:first_name]
   zipcode = clean_zipcode(row[:zipcode])
-  legislators = legislators_by_zipcode(zipcode)
+  #legislators = legislators_by_zipcode(zipcode)
 
-  puts clean_phone_numbers(row[:homephone])
   #form_letter = erb_template.result(binding)
 
   #save_thank_you_letter(id, form_letter)
